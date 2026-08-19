@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Informe LOPDP - {{ report.cliente }}</title>
+<style>
+  @font-face {
+    font-family: 'ReportFont';
+    src: url('data:font/otf;base64,{{ font_regular }}') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'ReportFont';
+    src: url('data:font/otf;base64,{{ font_bold }}') format('opentype');
+    font-weight: bold;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'ReportFont';
+    src: url('data:font/otf;base64,{{ font_italic }}') format('opentype');
+    font-weight: normal;
+    font-style: italic;
+  }
+  @font-face {
+    font-family: 'ReportFont';
+    src: url('data:font/otf;base64,{{ font_bolditalic }}') format('opentype');
+    font-weight: bold;
+    font-style: italic;
+  }
+
+  :root {
+    --navy: #002060;
+    --gray-text: #555555;
+    --gray-bg: #EDEDED;
+    --c-cumple: #2E7D32;
+    --c-no-cumple: #C62828;
+    --c-revisar: #E65100;
+    --c-no-detectado: #616161;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  body {
+    font-family: 'ReportFont', Arial, sans-serif;
+    font-size: 10.5pt;
+    color: #111111;
+    margin: 0;
+    padding: 0;
+  }
+  p { margin: 0 0 8px 0; text-align: justify; }
+
+  .page-break { page-break-before: always; break-before: page; }
+
+  /* --- Portada --- */
+  .cover { text-align: center; }
+  .cover .banner { width: 100%; max-width: 100%; display: block; margin: 40px auto 24px auto; }
+  .cover h1 { font-size: 24pt; color: var(--navy); margin: 20px 0 6px 0; }
+  .cover .subtitle { font-size: 12.5pt; color: var(--gray-text); margin-bottom: 26px; }
+  .cover .meta-strong { font-size: 11.5pt; font-weight: bold; margin-bottom: 2px; }
+  .cover .meta-gray { font-size: 10.5pt; color: var(--gray-text); }
+
+  .disclaimer-box {
+    background: var(--gray-bg);
+    padding: 14px 18px;
+    margin-top: 34px;
+    border-radius: 2px;
+  }
+  .disclaimer-box h3 { color: var(--navy); font-size: 11pt; margin: 0 0 8px 0; }
+  .disclaimer-box p { font-size: 9.5pt; margin-bottom: 8px; }
+
+  /* --- Bandas de sección --- */
+  .section-band {
+    background: var(--navy);
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 12.5pt;
+    padding: 6px 10px;
+    margin: 22px 0 10px 0;
+  }
+  .sub-heading {
+    color: var(--navy);
+    font-weight: bold;
+    font-size: 11.5pt;
+    margin: 14px 0 8px 0;
+  }
+
+  /* --- Tablas de hallazgos ---
+     Nota técnica: usamos divs con CSS Grid en vez de <table>/<tr> porque el motor
+     de impresión de Chromium tiene un bug conocido: cuando una fila de tabla con
+     texto largo debe moverse a la siguiente página, a veces pinta un fragmento
+     fantasma superpuesto (texto de una celda encima de otra). Con bloques grid +
+     "break-inside: avoid" el salto de página es limpio y confiable. */
+  .finding-block { width: 100%; margin-bottom: 16px; }
+  .finding-head, .finding-row {
+    display: grid;
+    grid-template-columns: 22% 13% 33% 32%;
+  }
+  .finding-head > div {
+    background: var(--navy);
+    color: #ffffff;
+    font-weight: bold;
+    text-align: left;
+    font-size: 9.5pt;
+    padding: 6px 8px;
+    border: 1px solid var(--navy);
+    margin-left: -1px;
+  }
+  .finding-head > div:first-child { margin-left: 0; }
+  .finding-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .finding-row > div {
+    text-align: left;
+    vertical-align: top;
+    font-size: 9.5pt;
+    padding: 8px 8px;
+    border: 1px solid #cccccc;
+    border-top: none;
+    margin-left: -1px;
+    overflow-wrap: break-word;
+  }
+  .finding-row > div:first-child { margin-left: 0; }
+
+  .status { font-weight: bold; }
+  .status-CUMPLE { color: var(--c-cumple); }
+  .status-NO_CUMPLE { color: var(--c-no-cumple); }
+  .status-REVISAR_MANUAL { color: var(--c-revisar); }
+  .status-NO_DETECTADO { color: var(--c-no-detectado); }
+  .reco-none { color: var(--gray-text); }
+
+  /* --- Resumen ejecutivo --- */
+  table.summary { width: 100%; border-collapse: collapse; margin: 10px 0 18px 0; }
+  table.summary th {
+    background: var(--navy); color: #fff; text-align: left; font-size: 10pt; padding: 6px 8px; border: 1px solid var(--navy);
+  }
+  table.summary td { font-size: 10pt; padding: 6px 8px; border: 1px solid #cccccc; }
+
+  ul.plain-bullets { margin: 0 0 14px 0; padding-left: 22px; }
+  ul.plain-bullets li { margin-bottom: 4px; font-size: 10pt; text-align: justify; }
+
+  /* --- Conclusiones --- */
+  ul.conclusions { margin: 10px 0 18px 0; padding-left: 22px; }
+  ul.conclusions li { margin-bottom: 8px; font-size: 10.5pt; text-align: justify; }
+
+  /* --- Firma --- */
+  .signature { margin-top: 30px; }
+  .signature .name { font-weight: bold; font-size: 12pt; margin-top: 14px; }
+  .signature .email a { color: #0563C1; font-size: 8pt; text-decoration: underline; }
+  .signature .city { font-size: 8pt; }
+</style>
+</head>
+<body>
+
+<!-- ===================== PORTADA ===================== -->
+<div class="cover">
+  <img class="banner" src="data:image/png;base64,{{ banner_b64 }}" alt="Protego Consulting">
+  <h1>Informe Preliminar de Cumplimiento LOPDP</h1>
+  <div class="subtitle">Ley Orgánica de Protección de Datos Personales &mdash; Ecuador</div>
+  <div class="meta-strong">Sitio analizado: {{ report.url_final }}</div>
+  <div class="meta-gray">Fecha del análisis: {{ report.fecha_analisis }}</div>
+
+  <div class="disclaimer-box">
+    <h3>Alcance y limitaciones de este informe</h3>
+    <p>Este informe fue generado mediante un análisis automatizado del sitio web público (rastreo del HTML,
+    búsqueda de texto y verificación con navegador headless). Es un apoyo técnico PRELIMINAR y NO constituye
+    un dictamen legal ni sustituye la asesoría de un abogado o Delegado de Protección de Datos (DPO).</p>
+    <p>El análisis automático NO puede verificar: contratos con encargados de tratamiento (proveedores/DPA),
+    el Registro de Actividades de Tratamiento interno, medidas de seguridad de backend/servidor, la
+    inscripción efectiva del DPO ante la SPDP, el cumplimiento real de plazos de respuesta, ni Evaluaciones
+    de Impacto (DPIA). Esos puntos requieren revisión documental o entrevista directa con la organización.</p>
+  </div>
+</div>
+
+<!-- ===================== RESUMEN EJECUTIVO ===================== -->
+<div class="page-break">
+  <div class="section-band">Resumen ejecutivo</div>
+  <p>Se analizaron {{ report.paginas_analizadas|length }} página(s) del sitio y se evaluaron {{ report['items']|length }} criterios derivados de la LOPDP.</p>
+
+  <table class="summary">
+    <thead><tr><th style="width:60%">Estado</th><th>Cantidad de criterios</th></tr></thead>
+    <tbody>
+      {% for key, label in status_order %}
+      <tr><td class="status status-{{ key }}">{{ label }}</td><td>{{ report.resumen.get(key, 0) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="sub-heading">Páginas analizadas</div>
+  <ul class="plain-bullets">
+    {% for key, url in report.paginas_analizadas.items() %}
+    <li>{{ key }}: {{ url }}</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<!-- ===================== DETALLE POR SECCIÓN ===================== -->
+<div class="page-break">
+{% for section_name, items in sections %}
+  <div class="section-band">{{ section_name }}</div>
+  <div class="finding-block">
+    <div class="finding-head">
+      <div>Ítem</div><div>Estado</div><div>Evidencia</div><div>Recomendación</div>
+    </div>
+    {% for it in items %}
+    <div class="finding-row">
+      <div><strong>{{ it.id }}&nbsp;&nbsp;{{ it.title }}</strong></div>
+      <div class="status status-{{ it.status }}">{{ status_label[it.status] }}</div>
+      <div>{{ it.evidence }}</div>
+      <div{% if it.recommendation.strip().lower() == 'ninguna.' %} class="reco-none"{% endif %}>{{ it.recommendation }}</div>
+    </div>
+    {% endfor %}
+  </div>
+{% endfor %}
+</div>
+
+<!-- ===================== CONCLUSIONES ===================== -->
+<div class="page-break">
+  <div class="section-band">Conclusiones y recomendaciones para {{ report.cliente }}</div>
+  <p>Con base en los hallazgos de este análisis, estas son las acciones prioritarias que recomendamos a {{ report.cliente }}:</p>
+  <ul class="conclusions">
+    {% for c in report.conclusiones %}
+    <li>{{ c }}</li>
+    {% endfor %}
+  </ul>
+
+  <div class="signature">
+    <div>Cordialmente,</div>
+    <div class="name">Protego Consulting</div>
+    <div class="email"><a href="mailto:info@protego-consulting.com">info@protego-consulting.com</a></div>
+    <div class="city">Guayaquil - Ecuador</div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!-- =========================================================================
+     WIDGET: Auditoría gratuita de cumplimiento LOPDP
+     =========================================================================
+     Cómo instalarlo:
+       1. Copia TODO este bloque (desde <section id="lopdp-widget"> hasta el
+          </script> final) y pégalo dentro de tu index.html, en el lugar de
+          la página donde quieras que aparezca (por ejemplo, antes del
+          footer, o como una sección propia).
+       2. Busca la línea que dice "const API_BASE = ..." más abajo, dentro
+          del <script>, y cámbiala por la URL real de tu app en
+          PythonAnywhere (ver README_DEPLOY.md). Ejemplo:
+              const API_BASE = "https://tuusuario.pythonanywhere.com";
+       3. Sube el index.html actualizado. Listo, no hace falta nada más:
+          todo el CSS y JS del widget van incluidos en este mismo bloque,
+          no dependen de ningún archivo externo.
+     ========================================================================= -->
+<section id="lopdp-widget">
+  <style>
+    #lopdp-widget {
+      --lw-navy: #002060;
+      --lw-navy-dark: #001440;
+      --lw-gray-bg: #EDEDED;
+      --lw-gray-text: #555555;
+      --lw-error: #C62828;
+      --lw-ok: #2E7D32;
+      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      max-width: 720px;
+      margin: 3rem auto;
+      padding: 2.5rem 2rem;
+      background: var(--lw-navy);
+      border-radius: 14px;
+      color: #ffffff;
+      box-sizing: border-box;
+    }
+    #lopdp-widget * { box-sizing: border-box; }
+    #lopdp-widget h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.6rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    #lopdp-widget p.lw-subtitle {
+      margin: 0 0 1.75rem;
+      text-align: center;
+      color: #cfd8e6;
+      font-size: 0.98rem;
+      line-height: 1.5;
+    }
+    #lopdp-widget form.lw-form {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    #lopdp-widget input[type="text"] {
+      flex: 1 1 260px;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      outline: none;
+    }
+    #lopdp-widget button.lw-submit {
+      flex: 0 0 auto;
+      padding: 0.85rem 1.6rem;
+      border-radius: 8px;
+      border: none;
+      background: #ffffff;
+      color: var(--lw-navy);
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    #lopdp-widget button.lw-submit:hover:not(:disabled) { background: #dfe6f2; }
+    #lopdp-widget button.lw-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    #lopdp-widget .lw-disclaimer {
+      margin-top: 0.9rem;
+      font-size: 0.78rem;
+      color: #a9b5cc;
+      line-height: 1.4;
+      text-align: center;
+    }
+    #lopdp-widget .lw-status {
+      margin-top: 1.4rem;
+      padding: 1rem 1.2rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      display: none;
+    }
+    #lopdp-widget .lw-status.lw-show { display: block; }
+    #lopdp-widget .lw-status.lw-error { background: rgba(198, 40, 40, 0.25); }
+    #lopdp-widget .lw-status.lw-ok { background: rgba(46, 125, 50, 0.25); }
+    #lopdp-widget .lw-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+      vertical-align: -2px;
+      animation: lw-spin 0.8s linear infinite;
+    }
+    @keyframes lw-spin { to { transform: rotate(360deg); } }
+    #lopdp-widget .lw-download-btn {
+      display: inline-block;
+      margin-top: 0.7rem;
+      padding: 0.6rem 1.2rem;
+      background: #ffffff;
+      color: var(--lw-navy);
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 0.92rem;
+    }
+  </style>
+
+  <h2>Auditoría gratuita de cumplimiento LOPDP</h2>
+  <p class="lw-subtitle">
+    Ingresa la URL de tu sitio web y recibe en minutos un informe preliminar
+    de cumplimiento con la Ley Orgánica de Protección de Datos Personales
+    de Ecuador.
+  </p>
+
+  <form class="lw-form" id="lw-form">
+    <input
+      type="text"
+      id="lw-url"
+      placeholder="www.tuempresa.com"
+      autocomplete="off"
+      required
+    />
+    <button type="submit" class="lw-submit" id="lw-submit-btn">Analizar mi sitio</button>
+  </form>
+
+  <p class="lw-disclaimer">
+    Es una herramienta de apoyo técnico automatizada y NO constituye asesoría
+    legal. El análisis puede tardar 1-2 minutos.
+  </p>
+
+  <div class="lw-status" id="lw-status"></div>
+
+  <script>
+    (function () {
+      // -----------------------------------------------------------------
+      // Cambia esto por la URL real de tu app Flask en PythonAnywhere.
+      // Ejemplo: "https://tuusuario.pythonanywhere.com"
+      // -----------------------------------------------------------------
+      const API_BASE = "https://TUUSUARIO.pythonanywhere.com";
+
+      const form = document.getElementById("lw-form");
+      const input = document.getElementById("lw-url");
+      const btn = document.getElementById("lw-submit-btn");
+      const statusBox = document.getElementById("lw-status");
+
+      const POLL_INTERVAL_MS = 4000;
+      const MAX_POLL_MINUTES = 4;
+
+      function showStatus(html, variant) {
+        statusBox.className = "lw-status lw-show" + (variant ? " lw-" + variant : "");
+        statusBox.innerHTML = html;
+      }
+
+      function hideStatus() {
+        statusBox.className = "lw-status";
+        statusBox.innerHTML = "";
+      }
+
+      function setLoading(isLoading) {
+        btn.disabled = isLoading;
+        input.disabled = isLoading;
+        btn.textContent = isLoading ? "Analizando..." : "Analizar mi sitio";
+      }
+
+      async function pollStatus(jobId, startedAt) {
+        let resp, data;
+        try {
+          resp = await fetch(`${API_BASE}/api/status/${jobId}`);
+          data = await resp.json();
+        } catch (err) {
+          showStatus("No se pudo consultar el estado del análisis. Intenta de nuevo más tarde.", "error");
+          setLoading(false);
+          return;
+        }
+
+        if (!resp.ok) {
+          showStatus(data.error || "Ocurrió un error al consultar el análisis.", "error");
+          setLoading(false);
+          return;
+        }
+
+        if (data.status === "done") {
+          const downloadUrl = API_BASE + data.download_url;
+          showStatus(
+            `<strong>&#10003; Tu informe está listo${data.cliente ? " para " + data.cliente : ""}.</strong><br>` +
+            `Descárgalo aquí:<br>` +
+            `<a class="lw-download-btn" href="${downloadUrl}" download>Descargar informe PDF</a>`,
+            "ok"
+          );
+          setLoading(false);
+          // Dispara automáticamente la descarga.
+          const a = document.createElement("a");
+          a.href = downloadUrl;
+          a.setAttribute("download", "");
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          return;
+        }
+
+        if (data.status === "error") {
+          showStatus(data.error || "No se pudo completar el análisis de tu sitio.", "error");
+          setLoading(false);
+          return;
+        }
+
+        // Sigue "pending" o "running".
+        const elapsedMin = (Date.now() - startedAt) / 60000;
+        if (elapsedMin > MAX_POLL_MINUTES) {
+          showStatus(
+            "El análisis está tardando más de lo habitual. Puedes cerrar esta ventana; " +
+            "si el problema persiste, contáctanos directamente.",
+            "error"
+          );
+          setLoading(false);
+          return;
+        }
+
+        showStatus(
+          `<span class="lw-spinner"></span>Analizando tu sitio, esto puede tardar 1-2 minutos...`
+        );
+        setTimeout(() => pollStatus(jobId, startedAt), POLL_INTERVAL_MS);
+      }
+
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const url = input.value.trim();
+        if (!url) return;
+
+        hideStatus();
+        setLoading(true);
+        showStatus(`<span class="lw-spinner"></span>Enviando tu sitio a análisis...`);
+
+        let resp, data;
+        try {
+          resp = await fetch(`${API_BASE}/api/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+          });
+          data = await resp.json();
+        } catch (err) {
+          showStatus("No se pudo conectar con el servicio de análisis. Intenta de nuevo en unos minutos.", "error");
+          setLoading(false);
+          return;
+        }
+
+        if (!resp.ok) {
+          showStatus(data.error || "No se pudo iniciar el análisis.", "error");
+          setLoading(false);
+          return;
+        }
+
+        pollStatus(data.job_id, Date.now());
+      });
+    })();
+  </script>
+</section>
